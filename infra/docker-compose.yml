@@ -1,0 +1,36 @@
+services:
+  database:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: coal_sampling
+      POSTGRES_USER: coal_sampling
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-coal_sampling_dev}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U coal_sampling -d coal_sampling"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  backend:
+    build:
+      context: ../backend
+    environment:
+      APP_NAME: 输煤取样数字孪生系统
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      DATABASE_URL: postgresql+psycopg://coal_sampling:${POSTGRES_PASSWORD:-coal_sampling_dev}@database:5432/coal_sampling
+      JWT_SECRET: ${JWT_SECRET:-local-development-jwt-secret-change-before-deploy}
+      BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:-admin}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-local-admin-password-change-me}
+    depends_on:
+      database:
+        condition: service_healthy
+  frontend:
+    build:
+      context: ../frontend
+    ports:
+      - "${APP_PORT:-8080}:80"
+    depends_on:
+      - backend
+volumes:
+  postgres_data:
